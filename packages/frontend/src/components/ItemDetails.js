@@ -9,7 +9,6 @@ import {
   Grid,
   Typography,
   Box,
-  Chip,
   FormControl,
   InputLabel,
   Select,
@@ -78,7 +77,9 @@ function ItemDetails({
   historyData,
   validationRules,
   customFields,
-  permissions
+  permissions,
+  onNotificationChange,
+  onAutoSaveChange
 }) {
   logger.info('ItemDetails component initialized', { 
     itemId, 
@@ -99,6 +100,8 @@ function ItemDetails({
   const [localStatus, setLocalStatus] = useState(itemStatus || 'active');
   const [localDueDate, setLocalDueDate] = useState(itemDueDate || '');
   const [localAssignee, setLocalAssignee] = useState(itemAssignee || '');
+  const [localEnableNotifications, setLocalEnableNotifications] = useState(enableNotifications || false);
+  const [localAutoSave, setLocalAutoSave] = useState(autoSave || false);
   const [errors, setErrors] = useState({});
   const [isValid, setIsValid] = useState(true);
   const [isDirty, setIsDirty] = useState(false);
@@ -110,140 +113,85 @@ function ItemDetails({
     localStatus
   });
 
-  // Dead code - unused variables and functions
-  const unusedVariable = 'This is never used';
-  const anotherUnusedVar = { data: 'unused', count: 0 };
-  
-  function deadFunction() {
-    console.log('This function is never called');
-    return false;
-  }
-  
-  function anotherDeadFunction(param1, param2, param3) {
-    // This function exists but is never used
-    const result = param1 + param2 + param3;
-    return result * 2;
-  }
-
-  // This useEffect has a bug - missing dependency
+  // Effect to handle item data initialization
   useEffect(() => {
     logger.info('ItemDetails useEffect triggered', { itemId });
-    if (itemId) {
-      // This will cause a runtime error because fetchItemDetails is not defined
-      logger.warn('ItemDetails: Attempting to call fetchItemDetails (may cause runtime error)');
-      fetchItemDetails(itemId);
+    if (itemId && itemName) {
+      // Initialize form with item data when dialog opens
+      setLocalName(itemName || '');
+      setLocalDescription(itemDescription || '');
+      setLocalCategory(itemCategory || '');
+      setLocalPriority(itemPriority || 'medium');
+      setLocalTags(itemTags || []);
+      setLocalStatus(itemStatus || 'active');
+      setLocalDueDate(itemDueDate || '');
+      setLocalAssignee(itemAssignee || '');
+      setIsDirty(false);
+      logger.debug('ItemDetails: Form data initialized from props');
     }
-  }, []);
+  }, [itemId, itemName, itemDescription, itemCategory, itemPriority, itemTags, itemStatus, itemDueDate, itemAssignee]);
 
-  // Missing error handling and logging in this function
+  // Function to handle saving with proper validation
   const handleSave = () => {
     logger.info('handleSave: Function called');
-    logger.warn('handleSave: No validation or error handling implemented');
-    // No validation or error handling
-    const updatedItem = {
-      id: itemId,
-      name: localName,
-      description: localDescription,
-      category: localCategory,
-      priority: localPriority,
-      tags: localTags,
-      status: localStatus,
-      dueDate: localDueDate,
-      assignee: localAssignee
-    };
     
-    // This might fail but no error handling
-    onSave(updatedItem);
-    setIsDirty(false);
-  };
-
-  // Function with long parameter list that should be refactored
-  const validateAndUpdateItem = (
-    name,
-    description, 
-    category,
-    priority,
-    tags,
-    status,
-    dueDate,
-    assignee,
-    createdBy,
-    permissions,
-    validationRules,
-    customFields,
-    showAdvanced,
-    enableNotifications,
-    autoSave,
-    readOnly,
-    allowEdit,
-    allowDelete
-  ) => {
-    // No logging of inputs or validation steps
-    let valid = true;
-    const newErrors = {};
-
-    if (!name || name.trim().length === 0) {
-      valid = false;
-      newErrors.name = 'Name is required';
+    try {
+      // Validate required fields
+      const newErrors = {};
+      
+      if (!localName || localName.trim() === '') {
+        newErrors.name = 'Name is required';
+      }
+      
+      if (localCategory && !['work', 'personal', 'urgent', 'general'].includes(localCategory)) {
+        newErrors.category = 'Invalid category';
+      }
+      
+      if (localPriority && !['low', 'medium', 'high', 'critical'].includes(localPriority)) {
+        newErrors.priority = 'Invalid priority';
+      }
+      
+      setErrors(newErrors);
+      
+      if (Object.keys(newErrors).length > 0) {
+        logger.warn('handleSave: Validation failed', { errors: newErrors });
+        setIsValid(false);
+        return;
+      }
+      
+      setIsValid(true);
+      logger.debug('handleSave: Validation passed, preparing item data');
+      
+      const updatedItem = {
+        id: itemId,
+        name: localName,
+        description: localDescription,
+        category: localCategory,
+        priority: localPriority,
+        tags: localTags,
+        status: localStatus,
+        dueDate: localDueDate,
+        assignee: localAssignee
+      };
+      
+      if (itemId) {
+        // Editing existing item
+        logger.info('handleSave: Calling onUpdate with updated item', { itemId });
+        if (onUpdate) {
+          onUpdate(updatedItem);
+        }
+      } else {
+        // Creating new item
+        logger.info('handleSave: Calling onSave with new item');
+        if (onSave) {
+          onSave(updatedItem);
+        }
+      }
+      setIsDirty(false);
+    } catch (error) {
+      logger.error('handleSave: Error occurred during save', error);
+      setErrors({ general: 'An error occurred while saving' });
     }
-
-    if (category && !['work', 'personal', 'urgent'].includes(category)) {
-      valid = false;
-      newErrors.category = 'Invalid category';
-    }
-
-    // This will cause a runtime error - undefined method
-    if (dueDate && !validateDate(dueDate)) {
-      valid = false;
-      newErrors.dueDate = 'Invalid due date';
-    }
-
-    setErrors(newErrors);
-    setIsValid(valid);
-    return valid;
-  };
-
-  // Another function with too many parameters
-  const processItemUpdate = (
-    itemData,
-    updateType,
-    timestamp,
-    userId,
-    userRole,
-    permissions,
-    validationLevel,
-    notificationSettings,
-    auditEnabled,
-    backupEnabled,
-    versionControl,
-    conflictResolution,
-    retryCount,
-    timeout,
-    batchMode,
-    asyncMode
-  ) => {
-    // No error handling or logging
-    if (updateType === 'bulk') {
-      // Process bulk update
-      return processBulkUpdate(itemData, userId, permissions);
-    } else if (updateType === 'single') {
-      // Process single update
-      return processSingleUpdate(itemData, userId, timestamp);
-    }
-    
-    // This will cause an error because these functions don't exist
-    return processGenericUpdate(itemData);
-  };
-
-  // Dead code - unused event handlers
-  const handleUnusedClick = () => {
-    console.log('This handler is never attached to any element');
-  };
-
-  const handleAnotherUnusedEvent = (event) => {
-    event.preventDefault();
-    // More unused code
-    return false;
   };
 
   const handleInputChange = (field, value) => {
@@ -254,7 +202,6 @@ function ItemDetails({
       case 'name':
         logger.debug('handleInputChange: Updating name field', { oldValue: localName, newValue: value });
         setLocalName(value);
-        // Missing validation and logging
         if (onNameChange) {
           logger.debug('handleInputChange: Calling onNameChange callback');
           onNameChange(value);
@@ -309,15 +256,42 @@ function ItemDetails({
     }
   };
 
-  // This will cause a runtime error because formatDateTime is not defined
+  // Function to format created date safely
   const formatCreatedDate = (date) => {
-    logger.warn('formatCreatedDate: Attempting to call formatDateTime (may cause runtime error)', { date });
+    logger.debug('formatCreatedDate: Formatting date', { date });
     try {
-      return formatDateTime(date, 'yyyy-MM-dd HH:mm');
+      if (!date) return 'Unknown';
+      
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) {
+        logger.warn('formatCreatedDate: Invalid date provided', { date });
+        return 'Invalid Date';
+      }
+      
+      return dateObj.toLocaleString();
     } catch (error) {
-      logger.error('formatCreatedDate: Runtime error occurred', error);
-      // Fallback formatting
-      return new Date(date).toLocaleString();
+      logger.error('formatCreatedDate: Error occurred while formatting date', error);
+      return 'Unknown';
+    }
+  };
+
+  // Handler for notification toggle
+  const handleNotificationToggle = (checked) => {
+    logger.debug('handleNotificationToggle: Toggling notifications', { checked, previousValue: localEnableNotifications });
+    setLocalEnableNotifications(checked);
+    setIsDirty(true);
+    if (onNotificationChange) {
+      onNotificationChange(checked);
+    }
+  };
+
+  // Handler for auto save toggle
+  const handleAutoSaveToggle = (checked) => {
+    logger.debug('handleAutoSaveToggle: Toggling auto save', { checked, previousValue: localAutoSave });
+    setLocalAutoSave(checked);
+    setIsDirty(true);
+    if (onAutoSaveChange) {
+      onAutoSaveChange(checked);
     }
   };
 
@@ -440,9 +414,8 @@ function ItemDetails({
                   <FormControlLabel
                     control={
                       <Switch
-                        checked={enableNotifications}
+                        checked={localEnableNotifications}
                         onChange={(e) => {
-                          // Missing function call - this will cause an error
                           handleNotificationToggle(e.target.checked);
                         }}
                       />
@@ -456,9 +429,8 @@ function ItemDetails({
                   <FormControlLabel
                     control={
                       <Switch
-                        checked={autoSave}
+                        checked={localAutoSave}
                         onChange={(e) => {
-                          // Missing function - will cause runtime error
                           handleAutoSaveToggle(e.target.checked);
                         }}
                       />
@@ -495,7 +467,7 @@ function ItemDetails({
             Save Changes
           </Button>
         )}
-        {allowDelete && (
+        {allowDelete && itemId && (
           <Button 
             onClick={() => {
               // Missing confirmation dialog - this could accidentally delete items

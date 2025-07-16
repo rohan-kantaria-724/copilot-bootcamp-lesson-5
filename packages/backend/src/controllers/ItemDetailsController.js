@@ -112,22 +112,27 @@ class ItemDetailsController {
     
     try {
       logger.debug('createDetailedItem: Starting validation phase');
-      // Missing input validation
       
-      // This will cause a runtime error - validatePermissions function doesn't exist
-      logger.warn('createDetailedItem: Attempting to call validatePermissions (may cause runtime error)');
-      if (!validatePermissions(permissions, createdBy)) {
-        logger.error('createDetailedItem: Permission validation failed');
+      // Input validation
+      if (!name || typeof name !== 'string' || name.trim() === '') {
+        logger.error('createDetailedItem: Invalid name provided');
+        return res.status(400).json({ error: 'Item name is required' });
+      }
+      
+      // Simple permission validation - in a real app this would be more complex
+      const hasPermissions = !permissions || permissions.create !== false;
+      if (!hasPermissions) {
+        logger.warn('createDetailedItem: Insufficient permissions', { createdBy, permissions });
         return res.status(403).json({ error: 'Insufficient permissions' });
       }
 
-      // This will cause an error - processCustomFields doesn't exist
-      logger.warn('createDetailedItem: Attempting to call processCustomFields (may cause runtime error)');
-      const processedFields = processCustomFields(customFields, templateId);
+      // Process custom fields safely
+      const processedFields = customFields && typeof customFields === 'object' ? customFields : {};
+      logger.debug('createDetailedItem: Custom fields processed', { processedFields });
       
-      // This will cause an error - handleAttachments doesn't exist
-      logger.warn('createDetailedItem: Attempting to call handleAttachments (may cause runtime error)');
-      const attachmentIds = await handleAttachments(attachments, createdBy);
+      // Handle attachments safely
+      const attachmentIds = Array.isArray(attachments) ? attachments : [];
+      logger.debug('createDetailedItem: Attachments processed', { attachmentIds });
 
       logger.debug('createDetailedItem: Building item data object');
       const itemData = {
@@ -183,20 +188,27 @@ class ItemDetailsController {
       const newItem = this.db.prepare('SELECT * FROM item_details WHERE id = ?').get(result.lastInsertRowid);
       logger.info('createDetailedItem: Item created successfully', { itemId: newItem.id });
       
-      // This will cause an error - these functions don't exist
-      logger.warn('createDetailedItem: Attempting to call sendNotifications (may cause runtime error)');
-      await sendNotifications(notificationSettings, newItem);
-      logger.warn('createDetailedItem: Attempting to call logAuditEvent (may cause runtime error)');
-      await logAuditEvent(auditEnabled, 'item_created', newItem, createdBy);
-      logger.warn('createDetailedItem: Attempting to call createBackup (may cause runtime error)');
-      await createBackup(backupEnabled, newItem);
+      // Post-processing actions with safe implementations
+      if (notificationSettings && notificationSettings.enabled) {
+        logger.debug('createDetailedItem: Notifications requested but not implemented yet');
+      }
+      
+      if (auditEnabled) {
+        logger.debug('createDetailedItem: Audit logging requested but not implemented yet');
+      }
+      
+      if (backupEnabled) {
+        logger.debug('createDetailedItem: Backup requested but not implemented yet');
+      }
       
       logger.info('createDetailedItem: Sending successful response');
       res.status(201).json(newItem);
     } catch (error) {
       logger.error('createDetailedItem: Error occurred', error);
-      // Missing error logging and context
-      res.status(500).json({ error: 'Failed to create detailed item' });
+      res.status(500).json({ 
+        error: 'Failed to create detailed item', 
+        details: error.message 
+      });
     }
   }
 
@@ -238,29 +250,37 @@ class ItemDetailsController {
     
     try {
       logger.debug('updateItemWithAdvancedOptions: Starting validation phase');
-      // Missing input validation
       
-      // This will cause a runtime error - validateUpdatePermissions doesn't exist
-      logger.warn('updateItemWithAdvancedOptions: Attempting to call validateUpdatePermissions (may cause runtime error)');
-      if (!validateUpdatePermissions(permissions, userId, itemId)) {
+      // Input validation
+      if (!itemId || isNaN(parseInt(itemId))) {
+        logger.error('updateItemWithAdvancedOptions: Invalid item ID', { itemId });
+        throw new Error('Valid item ID is required');
+      }
+      
+      if (!updates || typeof updates !== 'object') {
+        logger.error('updateItemWithAdvancedOptions: Invalid updates object', { updates });
+        throw new Error('Updates object is required');
+      }
+      
+      // Simple permission validation
+      const hasPermissions = permissions && permissions.update !== false;
+      if (!hasPermissions) {
         logger.error('updateItemWithAdvancedOptions: Permission validation failed', { userId, itemId });
         throw new Error('Access denied');
       }
 
-      // This will cause an error - applyPreProcessors doesn't exist
-      logger.warn('updateItemWithAdvancedOptions: Attempting to call applyPreProcessors (may cause runtime error)');
-      const processedUpdates = applyPreProcessors(updates, preProcessors);
+      // Process updates safely (instead of calling non-existent functions)
+      const processedUpdates = { ...updates };
+      logger.debug('updateItemWithAdvancedOptions: Updates processed', { processedUpdates });
       
-      // This will cause an error - validateWithCustomRules doesn't exist
-      logger.warn('updateItemWithAdvancedOptions: Attempting to call validateWithCustomRules (may cause runtime error)');
-      const validationResult = validateWithCustomRules(processedUpdates, customValidators);
+      // Simple validation (instead of custom validators)
+      const validationResult = this.validateUpdateData(processedUpdates);
       if (!validationResult.isValid) {
-        logger.error('updateItemWithAdvancedOptions: Custom validation failed', validationResult.errors);
+        logger.error('updateItemWithAdvancedOptions: Validation failed', validationResult.errors);
         throw new Error('Validation failed: ' + validationResult.errors.join(', '));
       }
 
       logger.debug('updateItemWithAdvancedOptions: Fetching current item from database');
-      // Missing transaction handling
       const currentItem = this.db.prepare('SELECT * FROM item_details WHERE id = ?').get(itemId);
       if (!currentItem) {
         logger.error('updateItemWithAdvancedOptions: Item not found in database', { itemId });
@@ -268,17 +288,23 @@ class ItemDetailsController {
       }
       logger.debug('updateItemWithAdvancedOptions: Current item retrieved', { itemId, currentName: currentItem.name });
 
-      // This will cause an error - createVersionSnapshot doesn't exist
-      if (versioningOptions.enabled) {
-        logger.warn('updateItemWithAdvancedOptions: Attempting to call createVersionSnapshot (may cause runtime error)');
-        await createVersionSnapshot(currentItem, userId, versioningOptions);
+      // Version control handling (safe implementation)
+      if (versioningOptions && versioningOptions.enabled) {
+        logger.debug('updateItemWithAdvancedOptions: Version control requested but not implemented yet');
       }
 
       logger.info('updateItemWithAdvancedOptions: Building dynamic update query');
-      // Build update query dynamically (potential SQL injection if not careful)
-      const updateFields = Object.keys(processedUpdates);
+      // Build update query dynamically with safe field mapping
+      const allowedFields = ['name', 'description', 'category', 'priority', 'tags', 'status', 'due_date', 'assignee'];
+      const updateFields = Object.keys(processedUpdates).filter(field => allowedFields.includes(field));
+      
+      if (updateFields.length === 0) {
+        logger.warn('updateItemWithAdvancedOptions: No valid fields to update', { processedUpdates });
+        throw new Error('No valid fields to update');
+      }
+      
       const setClause = updateFields.map(field => `${field} = ?`).join(', ');
-      const values = [...Object.values(processedUpdates), itemId];
+      const values = updateFields.map(field => processedUpdates[field]);
       logger.debug('updateItemWithAdvancedOptions: Update query prepared', { updateFields, setClause });
 
       const updateResult = this.db.prepare(`
@@ -293,21 +319,55 @@ class ItemDetailsController {
 
       const updatedItem = this.db.prepare('SELECT * FROM item_details WHERE id = ?').get(itemId);
       
-      // This will cause errors - these functions don't exist
-      logger.warn('updateItemWithAdvancedOptions: Attempting to call handlePostProcessing (may cause runtime error)');
-      await handlePostProcessing(updatedItem, postProcessors);
-      logger.warn('updateItemWithAdvancedOptions: Attempting to call triggerNotifications (may cause runtime error)');
-      await triggerNotifications(notificationOptions, updatedItem, currentItem);
-      logger.warn('updateItemWithAdvancedOptions: Attempting to call logAuditTrail (may cause runtime error)');
-      await logAuditTrail(auditOptions, 'item_updated', updatedItem, currentItem, userId);
+      // Post-processing actions with safe implementations
+      if (postProcessors && postProcessors.length > 0) {
+        logger.debug('updateItemWithAdvancedOptions: Post-processing requested but not implemented yet');
+      }
+      
+      if (notificationOptions && notificationOptions.enabled) {
+        logger.debug('updateItemWithAdvancedOptions: Notifications requested but not implemented yet');
+      }
+      
+      if (auditOptions && auditOptions.enabled) {
+        logger.debug('updateItemWithAdvancedOptions: Audit logging requested but not implemented yet');
+      }
       
       logger.info('updateItemWithAdvancedOptions: Update completed successfully', { itemId });
       return updatedItem;
     } catch (error) {
       logger.error('updateItemWithAdvancedOptions: Error occurred', error);
-      // Missing error logging and recovery
       throw error;
     }
+  }
+
+  /**
+   * Validates update data for item details
+   * @param {Object} updates - Update data object
+   * @returns {Object} Validation result with isValid flag and errors array
+   */
+  validateUpdateData(updates) {
+    const errors = [];
+    
+    if (updates.name && (typeof updates.name !== 'string' || updates.name.trim() === '')) {
+      errors.push('Name must be a non-empty string');
+    }
+    
+    if (updates.category && !['work', 'personal', 'urgent', 'general'].includes(updates.category)) {
+      errors.push('Category must be one of: work, personal, urgent, general');
+    }
+    
+    if (updates.priority && !['low', 'medium', 'high', 'critical'].includes(updates.priority)) {
+      errors.push('Priority must be one of: low, medium, high, critical');
+    }
+    
+    if (updates.status && !['active', 'inactive', 'pending', 'completed'].includes(updates.status)) {
+      errors.push('Status must be one of: active, inactive, pending, completed');
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
   }
 
   // Dead code - unused methods
@@ -329,14 +389,18 @@ class ItemDetailsController {
     return required.every(field => itemData[field]);
   }
 
-  // Function that will cause runtime errors
+  // Function to get item with related data
   async getItemWithRelatedData(req, res) {
     const { id } = req.params;
     logger.info('getItemWithRelatedData: Function called', { itemId: id });
     
-    // No input validation or logging
-    
     try {
+      // Input validation
+      if (!id || isNaN(parseInt(id))) {
+        logger.error('getItemWithRelatedData: Invalid item ID', { itemId: id });
+        return res.status(400).json({ error: 'Valid item ID is required' });
+      }
+      
       logger.debug('getItemWithRelatedData: Fetching item from database', { itemId: id });
       const item = this.db.prepare('SELECT * FROM item_details WHERE id = ?').get(id);
       
@@ -346,21 +410,22 @@ class ItemDetailsController {
       }
       logger.debug('getItemWithRelatedData: Item found', { itemId: id, itemName: item.name });
 
-      // This will cause errors - these functions don't exist
-      logger.warn('getItemWithRelatedData: Attempting to call fetchRelatedItems (may cause runtime error)');
-      const relatedItems = await fetchRelatedItems(item.id);
-      logger.warn('getItemWithRelatedData: Attempting to call getItemAttachments (may cause runtime error)');
-      const attachments = await getItemAttachments(item.attachment_ids);
-      logger.warn('getItemWithRelatedData: Attempting to call getItemComments (may cause runtime error)');
-      const comments = await getItemComments(item.id);
-      logger.warn('getItemWithRelatedData: Attempting to call getItemHistory (may cause runtime error)');
-      const history = await getItemHistory(item.id);
-      logger.warn('getItemWithRelatedData: Attempting to call resolveDependencies (may cause runtime error)');
-      const dependencies = await resolveDependencies(item.dependencies);
+      // Safe implementations instead of non-existent functions
+      const relatedItems = []; // Would fetch related items in real implementation
+      const attachments = item.attachment_ids ? JSON.parse(item.attachment_ids) : [];
+      const comments = []; // Would fetch comments in real implementation
+      const history = []; // Would fetch history in real implementation
+      const dependencies = item.dependencies ? JSON.parse(item.dependencies) : [];
       
-      // This will cause an error - enrichWithUserData doesn't exist
-      logger.warn('getItemWithRelatedData: Attempting to call enrichWithUserData (may cause runtime error)');
-      const enrichedItem = await enrichWithUserData(item);
+      // Parse JSON fields safely
+      const enrichedItem = {
+        ...item,
+        tags: item.tags ? JSON.parse(item.tags) : [],
+        custom_fields: item.custom_fields ? JSON.parse(item.custom_fields) : {},
+        metadata: item.metadata ? JSON.parse(item.metadata) : {},
+        linked_items: item.linked_items ? JSON.parse(item.linked_items) : [],
+        reminder_settings: item.reminder_settings ? JSON.parse(item.reminder_settings) : {}
+      };
       
       logger.debug('getItemWithRelatedData: Building response object');
       const response = {
@@ -376,19 +441,25 @@ class ItemDetailsController {
       res.json(response);
     } catch (error) {
       logger.error('getItemWithRelatedData: Error occurred', error);
-      // Missing error logging
-      res.status(500).json({ error: 'Failed to fetch item details' });
+      res.status(500).json({ 
+        error: 'Failed to fetch item details',
+        details: error.message 
+      });
     }
   }
 
-  // Method with missing error handling and will cause runtime errors
+  // Method to delete item with cleanup
   async deleteItemWithCleanup(req, res) {
     const { id } = req.params;
     logger.info('deleteItemWithCleanup: Function called', { itemId: id });
     
-    // No validation or logging
-    
     try {
+      // Input validation
+      if (!id || isNaN(parseInt(id))) {
+        logger.error('deleteItemWithCleanup: Invalid item ID', { itemId: id });
+        return res.status(400).json({ error: 'Valid item ID is required' });
+      }
+      
       logger.debug('deleteItemWithCleanup: Fetching item before deletion', { itemId: id });
       const item = this.db.prepare('SELECT * FROM item_details WHERE id = ?').get(id);
       
@@ -398,15 +469,22 @@ class ItemDetailsController {
       }
       logger.debug('deleteItemWithCleanup: Item found, proceeding with cleanup', { itemId: id, itemName: item.name });
       
-      // This will cause an error - these cleanup functions don't exist
-      logger.warn('deleteItemWithCleanup: Attempting to call cleanupAttachments (may cause runtime error)');
-      await cleanupAttachments(item.attachment_ids);
-      logger.warn('deleteItemWithCleanup: Attempting to call removeFromCache (may cause runtime error)');
-      await removeFromCache(id);
-      logger.warn('deleteItemWithCleanup: Attempting to call notifyDependentItems (may cause runtime error)');
-      await notifyDependentItems(item.linked_items);
-      logger.warn('deleteItemWithCleanup: Attempting to call archiveAuditLogs (may cause runtime error)');
-      await archiveAuditLogs(id);
+      // Safe cleanup implementations
+      if (item.attachment_ids) {
+        logger.debug('deleteItemWithCleanup: Cleanup attachments requested but not implemented yet');
+      }
+      
+      // Clear from cache (safe implementation)
+      if (this.cache.has(id)) {
+        this.cache.delete(id);
+        logger.debug('deleteItemWithCleanup: Removed item from cache', { itemId: id });
+      }
+      
+      if (item.linked_items) {
+        logger.debug('deleteItemWithCleanup: Notify dependent items requested but not implemented yet');
+      }
+      
+      logger.debug('deleteItemWithCleanup: Archive audit logs requested but not implemented yet');
       
       logger.info('deleteItemWithCleanup: Executing database deletion', { itemId: id });
       const deleteResult = this.db.prepare('DELETE FROM item_details WHERE id = ?').run(id);
@@ -417,16 +495,17 @@ class ItemDetailsController {
       }
       logger.debug('deleteItemWithCleanup: Database deletion successful', { itemId: id, deletedRows: deleteResult.changes });
       
-      // This will cause an error - logDeletion doesn't exist
-      logger.warn('deleteItemWithCleanup: Attempting to call logDeletion (may cause runtime error)');
-      await logDeletion(item, req.user?.id || 'anonymous');
+      // Log deletion (safe implementation)
+      logger.debug('deleteItemWithCleanup: Deletion logging requested but not implemented yet');
       
       logger.info('deleteItemWithCleanup: Item deleted successfully', { itemId: id });
       res.json({ message: 'Item deleted successfully' });
     } catch (error) {
       logger.error('deleteItemWithCleanup: Error occurred during deletion', error);
-      // No error logging
-      res.status(500).json({ error: 'Deletion failed' });
+      res.status(500).json({ 
+        error: 'Deletion failed',
+        details: error.message 
+      });
     }
   }
 

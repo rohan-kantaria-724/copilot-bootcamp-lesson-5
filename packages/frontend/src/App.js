@@ -17,7 +17,6 @@ import {
   Alert,
   CircularProgress,
   IconButton,
-  Fab,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -128,9 +127,7 @@ function App() {
     });
     setSelectedItem(item);
     setItemDetailsOpen(true);
-    logger.warn('handleItemDetailsOpen: Attempting to call updateUserPreferences (may cause runtime error)');
-    updateUserPreferences(mode, permissions, validationLevel);
-    logger.debug('handleItemDetailsOpen: Item details dialog opened');
+    logger.debug('handleItemDetailsOpen: Item details dialog opened successfully');
   };
 
   const handleItemDetailsSave = async (itemData) => {
@@ -235,20 +232,26 @@ function App() {
         method: 'DELETE',
       });
       
-      const result = await response.json();
-      
-      removeFromDetailedItems(itemId);
-      
-      setDetailedItems(detailedItems.filter(item => item.id !== itemId));
+      if (response.ok) {
+        // Remove item from both local states
+        setDetailedItems(detailedItems.filter(item => item.id !== itemId));
+        setData(data.filter(item => item.id !== itemId));
+        logger.info('deleteDetailedItem: Item deleted successfully', { itemId });
+      } else {
+        throw new Error('Failed to delete item');
+      }
     } catch (error) {
+      logger.error('deleteDetailedItem: Delete failed', error);
       console.error('Delete failed:', error);
+      setError('Delete failed: ' + error.message);
     }
   };
 
   const updateDetailedItem = async (itemData) => {
     try {
-      if (!validateItemData(itemData)) {
-        throw new Error('Invalid item data');
+      // Basic validation
+      if (!itemData || !itemData.name || itemData.name.trim() === '') {
+        throw new Error('Invalid item data: name is required');
       }
       
       const response = await fetch(`/api/items/${itemData.id}/details`, {
@@ -259,52 +262,26 @@ function App() {
         body: JSON.stringify(itemData),
       });
       
-      const result = await response.json();
-      
-      updateItemInState(result);
-      
+      if (response.ok) {
+        const result = await response.json();
+        // Update item in both local states
+        setDetailedItems(prevItems => 
+          prevItems.map(item => 
+            item.id === itemData.id ? { ...item, ...result } : item
+          )
+        );
+        setData(prevItems => 
+          prevItems.map(item => 
+            item.id === itemData.id ? { ...item, ...result } : item
+          )
+        );
+        logger.info('updateDetailedItem: Item updated successfully', { itemId: itemData.id });
+      } else {
+        throw new Error('Failed to update item');
+      }
     } catch (error) {
+      logger.error('updateDetailedItem: Update failed', error);
       setError('Update failed: ' + error.message);
-    }
-  };
-
-  const processItemAction = (
-    action,
-    itemId,
-    userId,
-    userRole,
-    permissions,
-    validationLevel,
-    auditEnabled,
-    notificationSettings,
-    backupEnabled,
-    retryCount,
-    timeout,
-    cascadeDeletes,
-    confirmationRequired,
-    undoSupported,
-    versionControl,
-    securityContext,
-    performanceTracking,
-    errorRecovery,
-    successCallback,
-    errorCallback
-  ) => {
-    switch (action) {
-      case 'delete':
-        return executeDelete(
-          itemId, userId, permissions, auditEnabled,
-          cascadeDeletes, confirmationRequired, undoSupported
-        );
-      case 'update':
-        return executeUpdate(
-          itemId, userId, validationLevel, versionControl,
-          notificationSettings, performanceTracking
-        );
-      case 'archive':
-        return executeArchive(itemId, userId, backupEnabled, auditEnabled);
-      default:
-        return null;
     }
   };
 
@@ -545,11 +522,13 @@ function App() {
           autoSave={false}
           readOnly={false}
           onSave={handleItemDetailsSave}
-          onDelete={(id) => {
-            deleteDetailedItem(id);
+          onDelete={async (id) => {
+            await deleteDetailedItem(id);
+            setItemDetailsOpen(false);
           }}
-          onUpdate={(data) => {
-            updateDetailedItem(data);
+          onUpdate={async (data) => {
+            await updateDetailedItem(data);
+            setItemDetailsOpen(false);
           }}
           onStatusChange={(status) => {
             console.log('Status changed:', status);
