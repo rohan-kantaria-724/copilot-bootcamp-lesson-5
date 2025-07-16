@@ -42,40 +42,47 @@ class ItemService {
     logger.debug('ItemService initialized successfully');
   }
 
-  // Function with too many parameters that should be refactored to use an options object
-  async createItemWithDetails(
-    name,
-    description,
-    category,
-    priority,
-    tags,
-    status,
-    dueDate,
-    assignee,
-    createdBy,
-    customFields,
-    permissions,
-    validationLevel,
-    notificationSettings,
-    auditEnabled,
-    backupEnabled,
-    versionControl,
-    metadata,
-    attachments,
-    dependencies,
-    estimatedHours,
-    actualHours,
-    budget,
-    currency,
-    location,
-    externalReferences
-  ) {
+  // Refactored function with simplified parameters using itemData object and options
+  async createItemWithDetails(itemData, options = {}) {
+    // Destructure required fields from itemData
+    const {
+      name,
+      description = '',
+      category = 'general',
+      priority = 'medium',
+      tags = [],
+      status = 'pending',
+      dueDate = null,
+      assignee = null,
+      createdBy = 'system',
+      customFields = {},
+      metadata = {},
+      attachments = [],
+      dependencies = [],
+      estimatedHours = 0,
+      actualHours = 0,
+      budget = 0,
+      currency = 'USD',
+      location = null,
+      externalReferences = []
+    } = itemData;
+
+    // Destructure options for configuration parameters
+    const {
+      permissions = { canRead: true, canWrite: true },
+      validationLevel = 'standard',
+      notificationSettings = { enabled: false },
+      auditEnabled = false,
+      backupEnabled = false,
+      versionControl = false
+    } = options;
+
     logger.info('createItemWithDetails: Function called', {
       name,
       category,
       priority,
       createdBy,
-      parameterCount: arguments.length
+      parameterCount: Object.keys(itemData).length + Object.keys(options).length
     });
     
     try {
@@ -87,7 +94,7 @@ class ItemService {
       throw new Error('Item name is required');
     }
     
-    const itemData = {
+    const requestData = {
       name,
       description,
       category,
@@ -114,10 +121,10 @@ class ItemService {
       location,
       externalReferences
     };
-    logger.debug('createItemWithDetails: Item data prepared', { itemDataKeys: Object.keys(itemData) });
+    logger.debug('createItemWithDetails: Request data prepared', { requestDataKeys: Object.keys(requestData) });
 
     // Simple validation instead of non-existent function
-    const isValid = this.validateItemData(itemData);
+    const isValid = this.validateItemData(requestData);
     if (!isValid) {
       logger.error('createItemWithDetails: Item data validation failed');
       throw new Error('Invalid item data');
@@ -129,7 +136,7 @@ class ItemService {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(itemData),
+      body: JSON.stringify(requestData),
     });
 
     if (!response.ok) {
@@ -212,32 +219,33 @@ class ItemService {
     return preparedData;
   }
 
-  // Another function with too many parameters
-  async updateItemWithValidation(
-    itemId,
-    updates,
-    validationRules,
-    userPermissions,
-    auditOptions,
-    notificationOptions,
-    backupOptions,
-    versioningOptions,
-    conflictResolution,
-    retryPolicy,
-    timeoutSettings,
-    cachingStrategy,
-    loggingLevel,
-    performanceTracking,
-    securityContext,
-    transactionOptions,
-    rollbackStrategy,
-    successCallbacks,
-    errorCallbacks,
-    progressCallbacks
-  ) {
+  // Refactored function with simplified parameters using updates object and options
+  async updateItemWithValidation(itemId, updates, options = {}) {
+    // Destructure options for configuration parameters
+    const {
+      validationRules = { required: true },
+      userPermissions = { update: true },
+      auditOptions = { enabled: false },
+      notificationOptions = { enabled: false },
+      backupOptions = { createBackup: false },
+      versioningOptions = { trackVersion: false },
+      conflictResolution = 'merge',
+      retryPolicy = { maxRetries: 3 },
+      timeoutSettings = { timeout: 30000 },
+      cachingStrategy = { enabled: false },
+      loggingLevel = 'info',
+      performanceTracking = false,
+      securityContext = { authenticated: true },
+      transactionOptions = { autoCommit: true },
+      rollbackStrategy = 'full',
+      successCallbacks = [],
+      errorCallbacks = [],
+      progressCallbacks = []
+    } = options;
+
     logger.info('updateItemWithValidation: Function called', {
       itemId,
-      parameterCount: arguments.length,
+      parameterCount: Object.keys(updates).length + Object.keys(options).length,
       updateKeys: Object.keys(updates)
     });
     

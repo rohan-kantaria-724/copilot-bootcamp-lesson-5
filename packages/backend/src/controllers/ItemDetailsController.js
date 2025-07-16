@@ -67,51 +67,57 @@ class ItemDetailsController {
     logger.debug('ItemDetailsController: Controller initialized successfully');
   }
 
-  // Function with too many parameters that should be refactored
-  async createDetailedItem(
-    req,
-    res,
-    name,
-    description,
-    category,
-    priority,
-    tags,
-    status,
-    dueDate,
-    assignee,
-    createdBy,
-    customFields,
-    attachments,
-    permissions,
-    validationLevel,
-    notificationSettings,
-    auditEnabled,
-    backupEnabled,
-    versionControl,
-    metadata,
-    dependencies,
-    estimatedHours,
-    budget,
-    location,
-    externalRefs,
-    workflowStage,
-    approvalRequired,
-    templateId,
-    parentItemId,
-    linkedItems,
-    reminderSettings
-  ) {
+  // Refactored function with simplified parameters using options object
+  async createDetailedItem(req, res, itemData, options = {}) {
     logger.info('createDetailedItem: Function called with parameters', {
-      name,
-      category,
-      priority,
-      status,
-      createdBy,
-      parameterCount: arguments.length
+      name: itemData?.name,
+      category: itemData?.category,
+      priority: itemData?.priority,
+      status: itemData?.status,
+      createdBy: itemData?.createdBy,
+      hasOptions: !!options,
+      optionKeys: Object.keys(options)
     });
     
     try {
       logger.debug('createDetailedItem: Starting validation phase');
+      
+      // Extract data from itemData object
+      const {
+        name,
+        description,
+        category,
+        priority,
+        tags,
+        status,
+        dueDate,
+        assignee,
+        createdBy,
+        customFields,
+        attachments,
+        metadata,
+        dependencies,
+        estimatedHours,
+        budget,
+        location,
+        externalReferences
+      } = itemData;
+      
+      // Extract options with defaults
+      const {
+        permissions = null,
+        validationLevel = 'standard',
+        notificationSettings = null,
+        auditEnabled = false,
+        backupEnabled = false,
+        versionControl = false,
+        workflowStage = null,
+        approvalRequired = false,
+        templateId = null,
+        parentItemId = null,
+        linkedItems = null,
+        reminderSettings = null
+      } = options;
       
       // Input validation
       if (!name || typeof name !== 'string' || name.trim() === '') {
@@ -152,7 +158,7 @@ class ItemDetailsController {
         estimated_hours: estimatedHours,
         budget,
         location,
-        external_refs: JSON.stringify(externalRefs),
+        external_refs: JSON.stringify(externalReferences),
         workflow_stage: workflowStage,
         approval_required: approvalRequired,
         template_id: templateId,
@@ -212,34 +218,39 @@ class ItemDetailsController {
     }
   }
 
-  // Another function with too many parameters
-  async updateItemWithAdvancedOptions(
-    itemId,
-    updates,
-    userId,
-    userRole,
-    permissions,
-    validationRules,
-    auditOptions,
-    notificationOptions,
-    backupOptions,
-    versioningOptions,
-    conflictResolution,
-    retryPolicy,
-    timeoutSettings,
-    cachingStrategy,
-    loggingLevel,
-    performanceTracking,
-    securityContext,
-    transactionOptions,
-    rollbackStrategy,
-    successCallbacks,
-    errorCallbacks,
-    progressCallbacks,
-    customValidators,
-    postProcessors,
-    preProcessors
-  ) {
+  // Refactored function with simplified parameters using options object
+  async updateItemWithAdvancedOptions(itemId, updates, userContext = {}, options = {}) {
+    // Destructure user context for user-related parameters
+    const {
+      userId = 'system',
+      userRole = 'user',
+      permissions = { canRead: true, canWrite: true, update: true },
+      securityContext = { authenticated: true }
+    } = userContext;
+
+    // Destructure options for configuration parameters
+    const {
+      validationRules = { required: true },
+      auditOptions = { enabled: true },
+      notificationOptions = { enabled: false },
+      backupOptions = { createBackup: false },
+      versioningOptions = { trackVersion: false },
+      conflictResolution = 'merge',
+      retryPolicy = { maxRetries: 3 },
+      timeoutSettings = { timeout: 30000 },
+      cachingStrategy = 'default',
+      loggingLevel = 'info',
+      performanceTracking = false,
+      transactionOptions = { autoCommit: true },
+      rollbackStrategy = 'full',
+      successCallbacks = [],
+      errorCallbacks = [],
+      progressCallbacks = [],
+      customValidators = [],
+      postProcessors = [],
+      preProcessors = []
+    } = options;
+
     logger.info('updateItemWithAdvancedOptions: Function called', {
       itemId,
       userId,

@@ -136,33 +136,37 @@ function App() {
       itemCategory: itemData?.category 
     });
     try {
-      logger.debug('handleItemDetailsSave: Calling itemService.createItemWithDetails with many parameters');
+      logger.debug('handleItemDetailsSave: Calling itemService.createItemWithDetails with object parameters');
       const result = await itemService.createItemWithDetails(
-        itemData.name,
-        itemData.description,
-        itemData.category,
-        itemData.priority,
-        itemData.tags,
-        itemData.status,
-        itemData.dueDate,
-        itemData.assignee,
-        'current_user',
-        itemData.customFields,
-        itemData.permissions,
-        'standard',
-        itemData.notificationSettings,
-        true,
-        true,
-        true,
-        itemData.metadata,
-        itemData.attachments,
-        itemData.dependencies,
-        itemData.estimatedHours,
-        itemData.actualHours,
-        itemData.budget,
-        'USD',
-        itemData.location,
-        itemData.externalReferences
+        {
+          name: itemData.name,
+          description: itemData.description,
+          category: itemData.category,
+          priority: itemData.priority,
+          tags: itemData.tags,
+          status: itemData.status,
+          dueDate: itemData.dueDate,
+          assignee: itemData.assignee,
+          createdBy: 'current_user',
+          customFields: itemData.customFields,
+          metadata: itemData.metadata,
+          attachments: itemData.attachments,
+          dependencies: itemData.dependencies,
+          estimatedHours: itemData.estimatedHours,
+          actualHours: itemData.actualHours,
+          budget: itemData.budget,
+          currency: 'USD',
+          location: itemData.location,
+          externalReferences: itemData.externalReferences
+        },
+        {
+          permissions: itemData.permissions,
+          validationLevel: 'standard',
+          notificationSettings: itemData.notificationSettings,
+          auditEnabled: true,
+          backupEnabled: true,
+          versionControl: true
+        }
       );
       logger.info('handleItemDetailsSave: Item saved successfully', { itemId: result?.id });
       setDetailedItems([...detailedItems, result]);
@@ -503,64 +507,72 @@ function App() {
         </Paper>
 
         <ItemDetails
-          open={itemDetailsOpen}
-          onClose={() => setItemDetailsOpen(false)}
-          itemId={selectedItem?.id}
-          itemName={selectedItem?.name}
-          itemDescription={selectedItem?.description}
-          itemCategory={selectedItem?.category}
-          itemPriority={selectedItem?.priority}
-          itemTags={selectedItem?.tags ? JSON.parse(selectedItem.tags) : []}
-          itemStatus={selectedItem?.status}
-          itemDueDate={selectedItem?.due_date}
-          itemAssignee={selectedItem?.assignee}
-          itemCreatedBy={selectedItem?.created_by}
-          itemCreatedAt={selectedItem?.created_at}
-          itemUpdatedAt={selectedItem?.updated_at}
-          showAdvanced={true}
-          enableNotifications={true}
-          autoSave={false}
-          readOnly={false}
-          onSave={handleItemDetailsSave}
-          onDelete={async (id) => {
-            await deleteDetailedItem(id);
-            setItemDetailsOpen(false);
+          dialogConfig={{
+            open: itemDetailsOpen,
+            onClose: () => setItemDetailsOpen(false)
           }}
-          onUpdate={async (data) => {
-            await updateDetailedItem(data);
-            setItemDetailsOpen(false);
+          itemData={{
+            itemId: selectedItem?.id,
+            itemName: selectedItem?.name,
+            itemDescription: selectedItem?.description,
+            itemCategory: selectedItem?.category,
+            itemPriority: selectedItem?.priority,
+            itemTags: selectedItem?.tags ? JSON.parse(selectedItem.tags) : [],
+            itemStatus: selectedItem?.status,
+            itemDueDate: selectedItem?.due_date,
+            itemAssignee: selectedItem?.assignee,
+            itemCreatedBy: selectedItem?.created_by,
+            itemCreatedAt: selectedItem?.created_at,
+            itemUpdatedAt: selectedItem?.updated_at
           }}
-          onStatusChange={(status) => {
-            console.log('Status changed:', status);
+          handlers={{
+            onSave: handleItemDetailsSave,
+            onDelete: async (id) => {
+              await deleteDetailedItem(id);
+              setItemDetailsOpen(false);
+            },
+            onUpdate: async (data) => {
+              await updateDetailedItem(data);
+              setItemDetailsOpen(false);
+            },
+            onStatusChange: (status) => {
+              console.log('Status changed:', status);
+            },
+            onPriorityChange: (priority) => {
+              console.log('Priority changed:', priority);
+            },
+            onCategoryChange: (category) => {
+              console.log('Category changed:', category);
+            },
+            onTagsChange: (tags) => {
+              console.log('Tags changed:', tags);
+            },
+            onAssigneeChange: (assignee) => {
+              console.log('Assignee changed:', assignee);
+            },
+            onDueDateChange: (date) => {
+              console.log('Due date changed:', date);
+            },
+            onDescriptionChange: (desc) => {
+              console.log('Description changed:', desc);
+            },
+            onNameChange: (name) => {
+              console.log('Name changed:', name);
+            }
           }}
-          onPriorityChange={(priority) => {
-            console.log('Priority changed:', priority);
+          options={{
+            showAdvanced: true,
+            enableNotifications: true,
+            autoSave: false,
+            readOnly: false,
+            allowEdit: true,
+            allowDelete: true,
+            showHistory: false,
+            historyData: [],
+            validationRules: {},
+            customFields: {},
+            permissions: { canRead: true, canWrite: true }
           }}
-          onCategoryChange={(category) => {
-            console.log('Category changed:', category);  
-          }}
-          onTagsChange={(tags) => {
-            console.log('Tags changed:', tags);
-          }}
-          onAssigneeChange={(assignee) => {
-            console.log('Assignee changed:', assignee);
-          }}
-          onDueDateChange={(date) => {
-            console.log('Due date changed:', date);
-          }}
-          onDescriptionChange={(desc) => {
-            console.log('Description changed:', desc);
-          }}
-          onNameChange={(name) => {
-            console.log('Name changed:', name);
-          }}
-          allowEdit={true}
-          allowDelete={true}
-          showHistory={false}
-          historyData={[]}
-          validationRules={{}}
-          customFields={{}}
-          permissions={['read', 'write']}
         />
       </Container>
     </ThemeProvider>

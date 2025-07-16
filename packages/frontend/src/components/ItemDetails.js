@@ -35,53 +35,69 @@ const logger = {
 
 /**
  * ItemDetails component for managing detailed item information
- * This component has several issues that need refactoring:
- * - Long parameter lists
- * - Missing error handling and logging
- * - Dead code
- * - Runtime errors
+ * Refactored to use configuration objects instead of long parameter lists
  */
 function ItemDetails({ 
-  open, 
-  onClose, 
-  itemId, 
-  itemName,
-  itemDescription,
-  itemCategory,
-  itemPriority,
-  itemTags,
-  itemStatus,
-  itemDueDate,
-  itemAssignee,
-  itemCreatedBy,
-  itemCreatedAt,
-  itemUpdatedAt,
-  showAdvanced,
-  enableNotifications,
-  autoSave,
-  readOnly,
-  onSave,
-  onDelete,
-  onUpdate,
-  onStatusChange,
-  onPriorityChange,
-  onCategoryChange,
-  onTagsChange,
-  onAssigneeChange,
-  onDueDateChange,
-  onDescriptionChange,
-  onNameChange,
-  allowEdit,
-  allowDelete,
-  showHistory,
-  historyData,
-  validationRules,
-  customFields,
-  permissions,
-  onNotificationChange,
-  onAutoSaveChange
+  dialogConfig,
+  itemData,
+  handlers,
+  options = {}
 }) {
-  logger.info('ItemDetails component initialized', { 
+  // Destructure dialog configuration
+  const {
+    open = false,
+    onClose = () => {}
+  } = dialogConfig || {};
+
+  // Destructure item data
+  const {
+    itemId,
+    itemName = '',
+    itemDescription = '',
+    itemCategory = '',
+    itemPriority = 'medium',
+    itemTags = [],
+    itemStatus = 'active',
+    itemDueDate = '',
+    itemAssignee = '',
+    itemCreatedBy = '',
+    itemCreatedAt = '',
+    itemUpdatedAt = ''
+  } = itemData || {};
+
+  // Destructure handlers
+  const {
+    onSave = () => {},
+    onDelete = () => {},
+    onUpdate = () => {},
+    onStatusChange = () => {},
+    onPriorityChange = () => {},
+    onCategoryChange = () => {},
+    onTagsChange = () => {},
+    onAssigneeChange = () => {},
+    onDueDateChange = () => {},
+    onDescriptionChange = () => {},
+    onNameChange = () => {},
+    onNotificationChange = () => {},
+    onAutoSaveChange = () => {}
+  } = handlers || {};
+
+  // Destructure options
+  const {
+    showAdvanced = false,
+    enableNotifications = false,
+    autoSave = false,
+    readOnly = false,
+    allowEdit = true,
+    allowDelete = true,
+    showHistory = false,
+    historyData = [],
+    validationRules = {},
+    customFields = {},
+    permissions = { canRead: true, canWrite: true }
+  } = options;
+
+  logger.info('ItemDetails component initialized', {
     itemId, 
     itemName, 
     itemCategory,
@@ -89,7 +105,7 @@ function ItemDetails({
     readOnly,
     allowEdit,
     allowDelete,
-    parameterCount: arguments.length
+    configObjectCount: Object.keys({ dialogConfig, itemData, handlers, options }).length
   });
   
   const [localName, setLocalName] = useState(itemName || '');
