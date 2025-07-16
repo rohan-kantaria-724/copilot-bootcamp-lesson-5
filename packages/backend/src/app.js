@@ -4,18 +4,38 @@ const morgan = require('morgan');
 const Database = require('better-sqlite3');
 const ItemDetailsController = require('./controllers/ItemDetailsController');
 
+// Logger utility for debugging
+const logger = {
+  info: (message, data = null) => {
+    console.log(`[INFO] ${new Date().toISOString()} - App: ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  },
+  error: (message, error = null) => {
+    console.error(`[ERROR] ${new Date().toISOString()} - App: ${message}`, error ? error.stack || error : '');
+  },
+  debug: (message, data = null) => {
+    console.log(`[DEBUG] ${new Date().toISOString()} - App: ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  },
+  warn: (message, data = null) => {
+    console.warn(`[WARN] ${new Date().toISOString()} - App: ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  }
+};
+
 // Initialize express app
+logger.info('Starting express application initialization');
 const app = express();
 
 // Middleware
+logger.debug('Setting up middleware');
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
 // Initialize in-memory SQLite database
+logger.info('Initializing in-memory SQLite database');
 const db = new Database(':memory:');
 
 // Create tables
+logger.debug('Creating database tables');
 db.exec(`
   CREATE TABLE IF NOT EXISTS items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -54,23 +74,29 @@ db.exec(`
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )
 `);
+logger.debug('Database tables created successfully');
 
 // Insert some initial data
+logger.info('Inserting initial sample data');
 const initialItems = ['Item 1', 'Item 2', 'Item 3'];
 const insertStmt = db.prepare('INSERT INTO items (name) VALUES (?)');
 
 initialItems.forEach(item => {
+  logger.debug('Inserting sample item', { itemName: item });
   insertStmt.run(item);
 });
 
 console.log('In-memory database initialized with sample data');
 
 // Initialize ItemDetailsController
+logger.info('Initializing ItemDetailsController');
 const itemDetailsController = new ItemDetailsController(db);
 
 // Insert some sample detailed items with problematic function calls that will cause runtime errors
+logger.info('Creating sample detailed items for testing');
 try {
   // This will cause errors due to the long parameter list and missing functions in the controller
+  logger.debug('Inserting first sample detailed item');
   db.prepare(`
     INSERT INTO item_details (
       name, description, category, priority, status, created_by, created_at
@@ -85,6 +111,7 @@ try {
     new Date().toISOString()
   );
 
+  logger.debug('Inserting second sample detailed item');
   db.prepare(`
     INSERT INTO item_details (
       name, description, category, priority, status, created_by, created_at
@@ -99,17 +126,24 @@ try {
     new Date().toISOString()
   );
 
+  logger.info('Sample detailed items created successfully for refactoring exercises');
   console.log('Sample detailed items created for refactoring exercises');
 } catch (error) {
+  logger.error('Error creating sample detailed items', error);
   console.error('Error creating sample detailed items:', error);
 }
 
 // API Routes
+logger.info('Setting up API routes');
 app.get('/api/items', (req, res) => {
+  logger.info('GET /api/items: Request received');
   try {
+    logger.debug('GET /api/items: Fetching items from database');
     const items = db.prepare('SELECT * FROM items ORDER BY created_at DESC').all();
+    logger.info('GET /api/items: Successfully retrieved items', { itemCount: items.length });
     res.json(items);
   } catch (error) {
+    logger.error('GET /api/items: Error fetching items', error);
     console.error('Error fetching items:', error);
     res.status(500).json({ error: 'Failed to fetch items' });
   }

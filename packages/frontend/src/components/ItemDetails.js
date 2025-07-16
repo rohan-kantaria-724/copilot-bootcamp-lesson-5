@@ -18,6 +18,22 @@ import {
   FormControlLabel,
 } from '@mui/material';
 
+// Logger utility for debugging
+const logger = {
+  info: (message, data = null) => {
+    console.log(`[INFO] ${new Date().toISOString()} - ItemDetails: ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  },
+  error: (message, error = null) => {
+    console.error(`[ERROR] ${new Date().toISOString()} - ItemDetails: ${message}`, error ? error.stack || error : '');
+  },
+  debug: (message, data = null) => {
+    console.log(`[DEBUG] ${new Date().toISOString()} - ItemDetails: ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  },
+  warn: (message, data = null) => {
+    console.warn(`[WARN] ${new Date().toISOString()} - ItemDetails: ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  }
+};
+
 /**
  * ItemDetails component for managing detailed item information
  * This component has several issues that need refactoring:
@@ -64,6 +80,17 @@ function ItemDetails({
   customFields,
   permissions
 }) {
+  logger.info('ItemDetails component initialized', { 
+    itemId, 
+    itemName, 
+    itemCategory,
+    open,
+    readOnly,
+    allowEdit,
+    allowDelete,
+    parameterCount: arguments.length
+  });
+  
   const [localName, setLocalName] = useState(itemName || '');
   const [localDescription, setLocalDescription] = useState(itemDescription || '');
   const [localCategory, setLocalCategory] = useState(itemCategory || '');
@@ -75,6 +102,13 @@ function ItemDetails({
   const [errors, setErrors] = useState({});
   const [isValid, setIsValid] = useState(true);
   const [isDirty, setIsDirty] = useState(false);
+
+  logger.debug('ItemDetails component state initialized', {
+    localName,
+    localCategory,
+    localPriority,
+    localStatus
+  });
 
   // Dead code - unused variables and functions
   const unusedVariable = 'This is never used';
@@ -93,14 +127,18 @@ function ItemDetails({
 
   // This useEffect has a bug - missing dependency
   useEffect(() => {
+    logger.info('ItemDetails useEffect triggered', { itemId });
     if (itemId) {
       // This will cause a runtime error because fetchItemDetails is not defined
+      logger.warn('ItemDetails: Attempting to call fetchItemDetails (may cause runtime error)');
       fetchItemDetails(itemId);
     }
   }, []);
 
   // Missing error handling and logging in this function
   const handleSave = () => {
+    logger.info('handleSave: Function called');
+    logger.warn('handleSave: No validation or error handling implemented');
     // No validation or error handling
     const updatedItem = {
       id: itemId,
@@ -209,39 +247,63 @@ function ItemDetails({
   };
 
   const handleInputChange = (field, value) => {
+    logger.debug('handleInputChange: Field value changed', { field, value, previousDirty: isDirty });
     setIsDirty(true);
     
     switch (field) {
       case 'name':
+        logger.debug('handleInputChange: Updating name field', { oldValue: localName, newValue: value });
         setLocalName(value);
         // Missing validation and logging
-        onNameChange(value);
+        if (onNameChange) {
+          logger.debug('handleInputChange: Calling onNameChange callback');
+          onNameChange(value);
+        }
         break;
       case 'description':
+        logger.debug('handleInputChange: Updating description field');
         setLocalDescription(value);
-        onDescriptionChange(value);
+        if (onDescriptionChange) {
+          onDescriptionChange(value);
+        }
         break;
       case 'category':
+        logger.debug('handleInputChange: Updating category field', { oldValue: localCategory, newValue: value });
         setLocalCategory(value);
-        onCategoryChange(value);
+        if (onCategoryChange) {
+          onCategoryChange(value);
+        }
         break;
       case 'priority':
+        logger.debug('handleInputChange: Updating priority field', { oldValue: localPriority, newValue: value });
         setLocalPriority(value);
-        onPriorityChange(value);
+        if (onPriorityChange) {
+          onPriorityChange(value);
+        }
         break;
       case 'status':
+        logger.debug('handleInputChange: Updating status field', { oldValue: localStatus, newValue: value });
         setLocalStatus(value);
-        onStatusChange(value);
+        if (onStatusChange) {
+          onStatusChange(value);
+        }
         break;
       case 'dueDate':
+        logger.debug('handleInputChange: Updating dueDate field', { oldValue: localDueDate, newValue: value });
         setLocalDueDate(value);
-        onDueDateChange(value);
+        if (onDueDateChange) {
+          onDueDateChange(value);
+        }
         break;
       case 'assignee':
+        logger.debug('handleInputChange: Updating assignee field', { oldValue: localAssignee, newValue: value });
         setLocalAssignee(value);
-        onAssigneeChange(value);
+        if (onAssigneeChange) {
+          onAssigneeChange(value);
+        }
         break;
       default:
+        logger.warn('handleInputChange: Unhandled field type', { field, value });
         // No logging of unhandled cases
         break;
     }
@@ -249,7 +311,14 @@ function ItemDetails({
 
   // This will cause a runtime error because formatDateTime is not defined
   const formatCreatedDate = (date) => {
-    return formatDateTime(date, 'yyyy-MM-dd HH:mm');
+    logger.warn('formatCreatedDate: Attempting to call formatDateTime (may cause runtime error)', { date });
+    try {
+      return formatDateTime(date, 'yyyy-MM-dd HH:mm');
+    } catch (error) {
+      logger.error('formatCreatedDate: Runtime error occurred', error);
+      // Fallback formatting
+      return new Date(date).toLocaleString();
+    }
   };
 
   return (
